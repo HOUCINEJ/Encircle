@@ -44,7 +44,7 @@
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists() && docSnap.data().tiles.length > 0) {
-                const data = docSnap.data(); data.uid = user.uid; startGame(data); showToast("تم استعادة إمبراطوريتك بنجاح! 👑");
+                const data = docSnap.data(); data.uid = user.uid; startGame(data); showToast("تم استعادة إمبراطوريتك بنجاح! ");
             } else {
                 document.getElementById('nameScreen').style.display = 'block'; document.getElementById('countryName').value = docSnap.exists() ? docSnap.data().name : "";
 
@@ -73,7 +73,7 @@
                     };
 
                     await setDoc(docRef, newData); document.getElementById('nameScreen').style.display = 'none'; startGame(newData);
-                    showToast("🛡️ تم تفعيل درع الحماية لمدة 10 ثوانٍ!");
+                    showToast("محمي لمدة 10 ثواني خخخ");
 
                     // 🎓 تشغيل الشرح للمبتدئين
                     setTimeout(initTutorial, 1000);
@@ -84,12 +84,12 @@
         // 🎓 ================== نظام الشرح التفاعلي (بدون شاشة سوداء) ================== 🎓
         let tutStep = -1;
         const tutData = [
-            { title: "مرحباً أيها القائد! 👑", text: "سنعطيك 1500 ذهبة كهدية للبدء! اسحب الشاشة بإصبعك لتحريك الكاميرا.", target: null, btn: "ابدأ الشرح" },
-            { title: "اقتصاد الدولة 💰", text: "في الأعلى تجد رصيدك. أراضيك تنتج الذهب تلقائياً كل ثانية.", target: "navGoldBox", btn: "مفهوم" },
-            { title: "كيف تتوسع؟ 🗺️", text: "قم بالضغط (Tap) على أي مساحة فارغة في الخريطة بجوار أراضيك.", target: "gameCanvas", btn: "", waitAction: "clickMap" },
-            { title: "بدء الحملة ⚔️", text: "ممتاز! الآن اضغط على زر السيف الأحمر لتبدأ التوسع.", target: "actionBtn", btn: "", waitAction: "clickSword" },
-            { title: "رسم الحدود 🖌️", text: "مرر إصبعك لاحتلال الأراضي، ثم اضغط (تأكيد ✔️) لضمها.", target: "btnConfirmDraw", btn: "", waitAction: "clickConfirm" },
-            { title: "المتجر والأسلحة 🛒", text: "اضغط على زر المتجر لترقية الهجوم، الدفاع، أو تفعيل نبتون المدمر.", target: "btnToggleShop", btn: "إنهاء اللعب" }
+            { title: "نورت ", text: "سنعطيك 1500 ذهبة كهدية للبدء! اسحب الشاشة بإصبعك لتحريك الكاميرا.", target: null, btn: "ابدأ الشرح" },
+            { title: "اقتصاد الدولة ", text: "في الأعلى تجد رصيدك. أراضيك تنتج الذهب تلقائياً كل ثانية.", target: "navGoldBox", btn: "مفهوم" },
+            { title: "كيف تتوسع؟ ", text: "قم بالضغط (Tap) على أي مساحة فارغة في الخريطة بجوار أراضيك.", target: "gameCanvas", btn: "", waitAction: "clickMap" },
+            { title: "بدء الحملة ", text: "ممتاز! الآن اضغط على زر السيف الأحمر لتبدأ التوسع.", target: "actionBtn", btn: "", waitAction: "clickSword" },
+            { title: "رسم الحدود ", text: "مرر إصبعك لاحتلال الأراضي، ثم اضغط (تأكيد ) لضمها.", target: "btnConfirmDraw", btn: "", waitAction: "clickConfirm" },
+            { title: "المتجر والأسلحة ", text: "اضغط على زر المتجر لترقية الهجوم، الدفاع، أو تفعيل نبتون المدمر.", target: "btnToggleShop", btn: "إنهاء اللعب" }
         ];
 
         function initTutorial() {
@@ -165,7 +165,7 @@
         }
 
         function startGame(playerData) { myPlayer = new Player(playerData); players.push(myPlayer); document.getElementById('navPlayerName').innerText = myPlayer.name; let sc = myPlayer.spawnC; let sr = myPlayer.spawnR; camera.x = (sc * TILE_SIZE) - (window.innerWidth / 2); camera.y = (sr * TILE_SIZE) - (window.innerHeight / 2); document.getElementById('uiLayer').style.display = 'block'; canvas.style.display = 'block'; resizeCanvas(); startRealtimeSync(); setInterval(gameTick, 1000); setInterval(saveProgressToCloud, 10000); requestAnimationFrame(gameLoop); updateShopUI(); }
-        function gameOver() { if (!myPlayer) return; showToast("💀 لقد خسرت إمبراطوريتك!"); setTimeout(() => { location.reload(); }, 3000); }
+        function gameOver() { if (!myPlayer) return; showToast(" لقد فعلو لك تشي تشي"); setTimeout(() => { location.reload(); }, 3000); }
         function updateLeaderboard() { const lbContent = document.getElementById('lbContent'); let alivePlayers = players.filter(p => p.mass > 0).sort((a, b) => b.mass - a.mass); let top5 = alivePlayers.slice(0, 5); lbContent.innerHTML = ""; top5.forEach((p, index) => { let div = document.createElement('div'); div.className = 'lb-item'; if (p === myPlayer) div.classList.add('lb-me'); div.innerHTML = `<span>#${index + 1} ${p.name.substring(0, 8)}</span> <span>${p.mass} بكسل</span>`; lbContent.appendChild(div); }); }
 
         function checkVassals() {
@@ -212,7 +212,7 @@
         function paintTile(mouseX, mouseY) {
             if (currentBudget <= 0) return; let c = Math.floor((mouseX + camera.x) / TILE_SIZE); let r = Math.floor((mouseY + camera.y) / TILE_SIZE);
             if (c < 0 || c >= COLS || r < 0 || r >= ROWS || draftSet.has(`${c},${r}`)) return; let owner = grid[c][r]; if (owner === myPlayer) return;
-            if (owner && isProtected(owner)) return showToast("🛡️ هذه الدولة في فترة الحماية!");
+            if (owner && isProtected(owner)) return showToast(" هذه الدولة في فترة الحماية!");
             if (owner && Math.abs(c - owner.spawnC) <= 1 && Math.abs(r - owner.spawnR) <= 1) return;
             let isAdj = false;[[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(n => { let nc = c + n[0], nr = r + n[1]; if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS && (grid[nc][nr] === myPlayer || draftSet.has(`${nc},${nr}`))) isAdj = true; }); if (!isAdj) return;
             let cost = owner ? 2 * ((1 - DEF_BONUS[owner.defenseLevel]) / (1 + GEAR_BONUS[myPlayer.gearLevel])) : 1;
@@ -295,4 +295,5 @@
             ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; draftTiles.forEach(dt => ctx.fillRect(dt.c * TILE_SIZE - camX, dt.r * TILE_SIZE - camY, TILE_SIZE, TILE_SIZE));
             players.forEach(p => { let capX = (p.spawnC * TILE_SIZE) + (TILE_SIZE / 2) - camX; let capY = (p.spawnR * TILE_SIZE) + (TILE_SIZE / 2) - camY; if (capX > -50 && capX < canvas.width + 50 && capY > -50 && capY < canvas.height + 50) { if (isProtected(p)) { ctx.beginPath(); ctx.arc(capX, capY, 18, 0, Math.PI * 2); ctx.fillStyle = "rgba(52, 152, 219, 0.3)"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#3498db"; ctx.stroke(); } ctx.beginPath(); ctx.arc(capX, capY, 8, 0, Math.PI * 2); ctx.fillStyle = "white"; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = p.color; ctx.stroke(); ctx.fillStyle = "white"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.shadowColor = "black"; ctx.shadowBlur = 4; let displayName = p.vassalOf === (myPlayer ? myPlayer.uid : null) ? p.name + " 🏳️" : p.name; ctx.fillStyle = p.vassalOf === (myPlayer ? myPlayer.uid : null) ? "#bdc3c7" : "white"; ctx.fillText(displayName, capX, capY - 15); ctx.fillStyle = "#f1c40f"; ctx.font = "11px sans-serif"; ctx.fillText(`${p.mass} بكسل`, capX, capY - 2); ctx.shadowBlur = 0; } });
             drawMap(miniMapCanvas, miniMapCtx, false); if (isFullMapOpen) drawMap(fullMapCanvas, fullMapCtx, true); requestAnimationFrame(gameLoop);
+
         }

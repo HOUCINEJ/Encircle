@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta property="og:image" content="https://i.postimg.cc/3NdfFW8v/Encircle.jpg">
+    <title>Encircle</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="Encircle.jpeg" type="image/x-icon">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+</head>
+
+<body>
+
+    <div id="authScreen" class="screen-center">
+        <h1>مرحباً بك في اللعبة</h1>
+        <p>يجب تسجيل الدخول لحفظ إمبراطوريتك</p>
+        <button id="btnGoogleSignIn" class="auth-btn">تسجيل الدخول بـ Google 🌍</button>
+    </div>
+
+    <div id="nameScreen" class="screen-center" style="display:none;">
+        <h1>تأسيس إمبراطوريتك</h1>
+        <p>اختر اسماً لجمهوريتك العظيمة:</p>
+        <input type="text" id="countryName" placeholder="اسم الدولة..." autocomplete="off">
+        <br>
+        <button id="btnSaveName">تأكيد وبدء اللعب</button>
+    </div>
+
+    <!-- 🎓 واجهة الشرح التفاعلي (بدون شاشة سوداء) -->
+    <div id="tutBox">
+        <h3 id="tutTitle">العنوان</h3>
+        <p id="tutText">النص الشارح</p>
+        <div class="tut-btn-container">
+            <button id="btnTutSkip" class="tut-btn-skip">تخطي ❌</button>
+            <button id="tutBtn" class="tut-btn-next">التالي ✔️</button>
+        </div>
+    </div>
+
+    <!-- واجهة اللعبة -->
+    <div id="uiLayer">
+        <nav id="topNav">
+            <div class="nav-right">
+                <div class="player-badge">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">flag</span>
+                    <span id="navPlayerName">دولة...</span>
+                </div>
+                <span id="saveIndicator" class="material-symbols-outlined" title="تم الحفظ">cloud_done</span>
+            </div>
+
+            <div id="navGoldBox" class="nav-center">
+                <span id="goldCount">0</span>&nbsp; : GDP
+            </div>
+
+            <div class="nav-left">
+                <button id="btnToggleShop" class="nav-btn">
+                    <span class="material-symbols-outlined">shopping_cart</span>
+                    <span class="hide-mobile">المتجر</span>
+                    <span id="shopToggleArrow" class="material-symbols-outlined"
+                        style="font-size: 18px;">expand_more</span>
+                </button>
+
+                <div id="shopDropdown" class="collapsed">
+                    <div class="shop-item">
+                        <strong>سلاح الهجوم</strong>
+                        <p id="gearDesc" style="font-size:12px; margin:5px 0;">المستوى 0 (+0%)</p>
+                        <button id="btnBuyGear" class="buy-btn btn-gear">ترقية (100 🪙)</button>
+                    </div>
+                    <div class="shop-item">
+                        <strong>دفاع الدولة</strong>
+                        <p id="defDesc" style="font-size:12px; margin:5px 0;">المستوى 0 (-0%)</p>
+                        <button id="btnBuyDef" class="buy-btn btn-def">ترقية (80 🪙)</button>
+                    </div>
+                    <div class="shop-item">
+                        <strong>قنبلة نبتون 🚀</strong>
+                        <p id="neptuneDesc" style="font-size:12px; margin:5px 0;">المستوى 0 (تدمير 0%)</p>
+                        <button id="btnBuyNeptune" class="buy-btn btn-nuke">فتح (10 🪙)</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div id="leaderboard">
+            <h3><span class="material-symbols-outlined" style="font-size:18px;">trophy</span> أقوى 5 دول</h3>
+            <div id="lbContent"></div>
+        </div>
+        <div id="killFeed"></div>
+        <div id="miniMapContainer" title="فتح خريطة العالم">
+            <canvas id="miniMapCanvas"></canvas>
+            <span id="expandMapIcon" class="material-symbols-outlined">zoom_out_map</span>
+        </div>
+    </div>
+
+    <div id="fullMapModal">
+        <div class="full-map-header">
+            <h2><span class="material-symbols-outlined" style="font-size: 28px;">public</span> خريطة العالم</h2>
+            <button id="closeFullMap" class="material-symbols-outlined" title="إغلاق">cancel</button>
+        </div>
+        <canvas id="fullMapCanvas"></canvas>
+    </div>
+
+    <div id="actionBtn" class="float-btn" title="توسع ⚔️ (-500 ذهب)">⚔️</div>
+    <div id="neptuneBtn" class="float-btn" title="نبتون 🚀 (-1000 ذهب)">🚀</div>
+
+    <div id="drawPanel">
+        <h3>وضع التوسع النشط</h3>
+        <p>اسحب بإصبعك/الماوس لرسم الأراضي وتوسيع إمبراطوريتك.</p>
+        <progress id="drawProgress" value="0" max="100"></progress>
+        <div id="drawInfo" style="margin-bottom: 10px;">طاقة التوسع: <span id="budgetTxt">0</span></div>
+        <div id="drawActions">
+            <button id="btnConfirmDraw">تأكيد ✔️</button>
+            <button id="btnCancelDraw">إلغاء ❌</button>
+        </div>
+    </div>
+
+    <div id="toastMsg"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>

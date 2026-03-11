@@ -691,4 +691,34 @@ body,
             }
 
             /* رفع لوحة الرسم لكي لا يغطيها الشرح */
+            /* تصغير لوحة التوسع 4 مرات للهواتف */
+    #drawPanel {
+        width: 80%;
+        max-width: 150px; /* أصغر بكثير من السابق */
+        padding: 8px;
+        bottom: 140px;
+        border-radius: 8px;
+    }
+    #drawPanel h3 {
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+    #drawPanel p {
+        font-size: 9px;
+        margin: 3px 0;
+        line-height: 1.2;
+    }
+    #drawProgress {
+        height: 8px;
+        margin: 4px 0;
+    }
+    #drawInfo {
+        font-size: 10px;
+        margin-bottom: 6px;
+    }
+    #drawActions button {
+        padding: 5px 8px;
+        font-size: 11px;
+        margin: 0 2px;
+    }
         }

@@ -470,11 +470,19 @@ function gameTick() {
 // ================== نظام التحكم (بعد إصلاح الهواتف) ==================
 
 // ================== نظام التحكم والتنقيب وحدود الكاميرا ==================
+// ================== نظام التحكم، الزوم، وحدود الكاميرا ==================
 
-// 🗺️ دالة مسؤولة عن عدم الخروج خارج الخريطة
+let currentZoom = 1;      // الزوم الافتراضي
+let minZoom = 0.5;        // أقصى حد للإبعاد
+let maxZoom = 2.0;        // أقصى حد للتقريب
+let initialPinchDistance = null;
+let initialZoom = 1;
+const activePointers = new Map();
+
+// 🗺️ دالة مسؤولة عن عدم الخروج خارج الخريطة (مع مراعاة الزوم)
 function clampCamera() {
-    const maxCamX = (COLS * TILE_SIZE) - canvas.width;
-    const maxCamY = (ROWS * TILE_SIZE) - canvas.height;
+    const maxCamX = (COLS * TILE_SIZE) - (canvas.width / currentZoom);
+    const maxCamY = (ROWS * TILE_SIZE) - (canvas.height / currentZoom);
     
     if (maxCamX > 0) camera.x = Math.max(0, Math.min(camera.x, maxCamX));
     else camera.x = maxCamX / 2;
@@ -488,12 +496,18 @@ function handlePointerDown(e) {
     isMouseDown = true; 
     isDraggingMap = false; 
     
-    lastMouse = { x: e.clientX, y: e.clientY }; 
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // تفعيل الزوم إذا كان هناك إصبعان على الشاشة وكان الجهاز هاتفاً
+    if (activePointers.size === 2 && window.innerWidth <= 768) {
+        let pts = Array.from(activePointers.values());
+        initialPinchDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        initialZoom = currentZoom;
+    }
     
-    // حفظ إحداثيات اللمسة الأولى
+    lastMouse = { x: e.clientX, y: e.clientY }; 
     startClickX = e.clientX;
     startClickY = e.clientY;
-    
     clickTime = Date.now(); 
 }
 
@@ -501,38 +515,58 @@ function handlePointerMove(e) {
     if (isFullMapOpen) return; 
     if (!isMouseDown) return;
 
-    let dx = e.clientX - lastMouse.x; 
-    let dy = e.clientY - lastMouse.y; 
-    
-    if (gameState === 'IDLE') { 
-        // 📱 إصلاح حساسية اللمس: فقط إذا تحرك الإصبع أكثر من 5 بكسل نعتبره سحب خريطة
-        if (Math.abs(e.clientX - startClickX) > 5 || Math.abs(e.clientY - startClickY) > 5) {
-            isDraggingMap = true; 
-        }
-        
-        camera.x -= dx; 
-        camera.y -= dy; 
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        // 🛑 تطبيق حدود الخريطة (لا يمكن سحب الكاميرا خارج العالم)
-        clampCamera();
+    // نظام الزوم (Pinch to Zoom) للهواتف فقط
+    if (activePointers.size === 2 && window.innerWidth <= 768) {
+        isDraggingMap = true; 
+        let pts = Array.from(activePointers.values());
+        let currentDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
         
-        if (isDraggingMap) hideBtns(); 
-    } else if (gameState === 'DRAFTING') { 
-        // 🖌️ رسم الحدود عند التوسع بسلاسة
-        paintTile(e.clientX, e.clientY); 
-    } 
+        if (initialPinchDistance) {
+            let zoomFactor = currentDistance / initialPinchDistance;
+            currentZoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * zoomFactor));
+            clampCamera(); 
+        }
+        return; // تجاوز حركة السحب العادية أثناء الزوم
+    }
+
+    // نظام السحب العادي (بإصبع واحد)
+    if (activePointers.size === 1) {
+        let dx = e.clientX - lastMouse.x; 
+        let dy = e.clientY - lastMouse.y; 
+        
+        if (gameState === 'IDLE') { 
+            if (Math.abs(e.clientX - startClickX) > 5 || Math.abs(e.clientY - startClickY) > 5) {
+                isDraggingMap = true; 
+            }
+            
+            // جعل سرعة السحب متناسبة مع نسبة الزوم لكي يبدو طبيعياً
+            camera.x -= dx / currentZoom; 
+            camera.y -= dy / currentZoom; 
+
+            clampCamera();
+            
+            if (isDraggingMap) hideBtns(); 
+        } else if (gameState === 'DRAFTING') { 
+            paintTile(e.clientX, e.clientY); 
+        } 
+    }
     
     lastMouse = { x: e.clientX, y: e.clientY }; 
 }
 
 function handlePointerUp(e) {
     if (isFullMapOpen) return; 
-    isMouseDown = false; 
     
-    // 📱 تم زيادة وقت الضغطة إلى 500 ملي ثانية لتناسب الهواتف
-    if (gameState === 'IDLE' && !isDraggingMap && Date.now() - clickTime < 500) {
-        let c = Math.floor((e.clientX + camera.x) / TILE_SIZE); 
-        let r = Math.floor((e.clientY + camera.y) / TILE_SIZE);
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) initialPinchDistance = null;
+    if (activePointers.size === 0) isMouseDown = false; 
+    
+    if (gameState === 'IDLE' && !isDraggingMap && Date.now() - clickTime < 500 && activePointers.size === 0) {
+        // حساب إحداثيات الضغطة بناءً على نسبة الزوم الحالية
+        let c = Math.floor((e.clientX / currentZoom + camera.x) / TILE_SIZE); 
+        let r = Math.floor((e.clientY / currentZoom + camera.y) / TILE_SIZE);
         
         if (c >= 0 && c < COLS && r >= 0 && r < ROWS) {
             clickedTarget = grid[c][r]; 
@@ -555,7 +589,6 @@ function handlePointerUp(e) {
                 nbtn.style.display = 'none'; 
             }
 
-            // 🎓 تحديث الشرح
             if (tutStep >= 0 && tutData[tutStep].waitAction === "clickMap") nextTutStep();
         }
     }
@@ -566,7 +599,6 @@ function hideBtns() {
     document.getElementById('neptuneBtn').style.display = 'none'; 
 }
 
-// 🔥 استخدام أحداث (Pointer) الموحدة الحديثة بدلاً من Touch/Mouse لتجنب مشاكل الهواتف كلياً
 canvas.addEventListener('pointerdown', (e) => {
     if (!e.target.closest('#miniMapContainer') && !e.target.closest('#fullMapModal') && !e.target.closest('#tutBox') && !e.target.closest('#actionBtn')) { 
         e.preventDefault(); 
@@ -579,31 +611,13 @@ canvas.addEventListener('pointermove', (e) => {
 }); 
 canvas.addEventListener('pointerup', handlePointerUp);
 canvas.addEventListener('pointercancel', handlePointerUp);
-// ================== أفعال اللعب والتوسع ==================
-
-document.getElementById('actionBtn').addEventListener('click', () => {
-    initAudio(); 
-    hideBtns(); 
-    if (myPlayer.gold < 500) return showToast("تحتاج 500 ذهبة لحملة التوسع!");
-    
-    myPlayer.gold -= 500; 
-    gameState = 'DRAFTING'; 
-    draftTiles =[]; 
-    draftSet.clear();
-    maxBudget = Math.max(10, Math.floor(myPlayer.mass * 0.15)); 
-    currentBudget = maxBudget;
-    
-    updateDraftUI(); 
-    document.getElementById('drawPanel').style.display = 'block'; 
-    updateShopUI();
-
-    if (tutStep >= 0 && tutData[tutStep].waitAction === "clickSword") { setTimeout(nextTutStep, 200); }
-});
 
 function paintTile(mouseX, mouseY) {
     if (currentBudget <= 0) return; 
-    let c = Math.floor((mouseX + camera.x) / TILE_SIZE); 
-    let r = Math.floor((mouseY + camera.y) / TILE_SIZE);
+    
+    // تقسيم موضع الماوس على الزوم للحصول على الإحداثيات الحقيقية
+    let c = Math.floor((mouseX / currentZoom + camera.x) / TILE_SIZE); 
+    let r = Math.floor((mouseY / currentZoom + camera.y) / TILE_SIZE);
     
     if (c < 0 || c >= COLS || r < 0 || r >= ROWS || draftSet.has(`${c},${r}`)) return; 
     let owner = grid[c][r]; 
@@ -626,43 +640,6 @@ function paintTile(mouseX, mouseY) {
         updateDraftUI(); 
     }
 }
-
-function updateDraftUI() { 
-    document.getElementById('budgetTxt').innerText = Math.floor(currentBudget); 
-    document.getElementById('drawProgress').max = maxBudget; 
-    document.getElementById('drawProgress').value = maxBudget - currentBudget; 
-}
-
-document.getElementById('btnConfirmDraw').addEventListener('click', () => {
-    let affectedOwners = new Set(); 
-    let destroyedNames =[];
-    draftTiles.forEach(dt => { 
-        if (dt.oldOwner && dt.oldOwner !== myPlayer) { 
-            dt.oldOwner.tiles = dt.oldOwner.tiles.filter(t => t.c !== dt.c || t.r !== dt.r); 
-            affectedOwners.add(dt.oldOwner); 
-            if (dt.oldOwner.tiles.length === 0 && !destroyedNames.includes(dt.oldOwner.name)) destroyedNames.push(dt.oldOwner.name); 
-        } 
-        grid[dt.c][dt.r] = myPlayer; 
-        myPlayer.tiles.push({ c: dt.c, r: dt.r }); 
-    });
-    
-    gameState = 'IDLE'; 
-    document.getElementById('drawPanel').style.display = 'none'; 
-    saveTilesToCloud(myPlayer); 
-    affectedOwners.forEach(owner => saveTilesToCloud(owner)); 
-    saveProgressToCloud(); 
-    showToast("تم التوسع بنجاح! ✔️");
-    
-    if (destroyedNames.length > 0) broadcastNews(`قامت ${myPlayer.name} بتدمير ${destroyedNames.join(' و ')}!`, "⚔️");
-    if (tutStep >= 0 && tutData[tutStep].waitAction === "clickConfirm") nextTutStep();
-});
-
-document.getElementById('btnCancelDraw').addEventListener('click', () => { 
-    myPlayer.gold += 20; 
-    gameState = 'IDLE'; 
-    document.getElementById('drawPanel').style.display = 'none'; 
-});
-
 // ================== نظام المتجر ==================
 
 function buyWeapon(stat, costArr) { 
@@ -790,8 +767,9 @@ function drawMap(mapCanvas, mapCtx, isFullScreen) {
         mapCtx.lineWidth = 2; 
         let vx = Math.max(0, camera.x * scaleX); 
         let vy = Math.max(0, camera.y * scaleY); 
-        let vw = window.innerWidth * scaleX; 
-        let vh = window.innerHeight * scaleY; 
+        // المربع يكبر ويصغر حسب التقريب
+        let vw = (window.innerWidth / currentZoom) * scaleX; 
+        let vh = (window.innerHeight / currentZoom) * scaleY; 
         mapCtx.strokeRect(vx, vy, vw, vh); 
     } 
     
@@ -824,17 +802,23 @@ function gameLoop() {
     ctx.fillStyle = "#1a252f"; 
     ctx.fillRect(0, 0, canvas.width, canvas.height); 
     
+    // حفظ إعدادات الكانفاس لتطبيق الزوم بدون التأثير على الواجهة
+    ctx.save();
+    ctx.scale(currentZoom, currentZoom);
+    ctx.translate(-camera.x, -camera.y);
+    
     let camX = camera.x, camY = camera.y; 
     let startC = Math.max(0, Math.floor(camX / TILE_SIZE)); 
-    let endC = Math.min(COLS, Math.ceil((camX + canvas.width) / TILE_SIZE)); 
+    let endC = Math.min(COLS, Math.ceil((camX + (canvas.width / currentZoom)) / TILE_SIZE)); 
     let startR = Math.max(0, Math.floor(camY / TILE_SIZE)); 
-    let endR = Math.min(ROWS, Math.ceil((camY + canvas.height) / TILE_SIZE));
+    let endR = Math.min(ROWS, Math.ceil((camY + (canvas.height / currentZoom)) / TILE_SIZE));
     
     for (let c = startC; c < endC; c++) { 
         for (let r = startR; r < endR; r++) { 
             let owner = grid[c][r]; 
-            let x = c * TILE_SIZE - camX; 
-            let y = r * TILE_SIZE - camY; 
+            // الإحداثيات هنا تعتمد على موضعها الحقيقي في العالم بدلاً من طرح الكاميرا
+            let x = c * TILE_SIZE; 
+            let y = r * TILE_SIZE; 
             
             if (owner) { 
                 ctx.fillStyle = owner.color; 
@@ -854,13 +838,16 @@ function gameLoop() {
     }
     
     ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; 
-    draftTiles.forEach(dt => ctx.fillRect(dt.c * TILE_SIZE - camX, dt.r * TILE_SIZE - camY, TILE_SIZE, TILE_SIZE));
+    draftTiles.forEach(dt => ctx.fillRect(dt.c * TILE_SIZE, dt.r * TILE_SIZE, TILE_SIZE, TILE_SIZE));
     
     players.forEach(p => { 
-        let capX = (p.spawnC * TILE_SIZE) + (TILE_SIZE / 2) - camX; 
-        let capY = (p.spawnR * TILE_SIZE) + (TILE_SIZE / 2) - camY; 
+        let capX = (p.spawnC * TILE_SIZE) + (TILE_SIZE / 2); 
+        let capY = (p.spawnR * TILE_SIZE) + (TILE_SIZE / 2); 
         
-        if (capX > -50 && capX < canvas.width + 50 && capY > -50 && capY < canvas.height + 50) { 
+        // منع رسم العواصم إذا كانت خارج الشاشة
+        if (capX > camX - 50 && capX < camX + (canvas.width / currentZoom) + 50 && 
+            capY > camY - 50 && capY < camY + (canvas.height / currentZoom) + 50) { 
+            
             if (isProtected(p)) { 
                 ctx.beginPath(); ctx.arc(capX, capY, 18, 0, Math.PI * 2); 
                 ctx.fillStyle = "rgba(52, 152, 219, 0.3)"; ctx.fill(); 
@@ -868,7 +855,8 @@ function gameLoop() {
             } 
             ctx.beginPath(); ctx.arc(capX, capY, 8, 0, Math.PI * 2); 
             ctx.fillStyle = "white"; ctx.fill(); 
-            ctx.lineWidth = 3; ctx.strokeStyle = p.color; ctx.stroke(); 
+            ctx.lineWidth = 3 / currentZoom; // الحفاظ على سمك الخط متناسقاً
+            ctx.strokeStyle = p.color; ctx.stroke(); 
             
             ctx.fillStyle = "white"; 
             ctx.font = "bold 14px sans-serif"; 
@@ -884,6 +872,9 @@ function gameLoop() {
         } 
     });
     
+    // إرجاع الإعدادات الأصلية (لكي ترسم الخريطة المصغرة بشكل طبيعي)
+    ctx.restore();
+
     drawMap(miniMapCanvas, miniMapCtx, false); 
     if (isFullMapOpen) drawMap(fullMapCanvas, fullMapCtx, true); 
     requestAnimationFrame(gameLoop);

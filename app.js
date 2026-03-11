@@ -640,6 +640,62 @@ function paintTile(mouseX, mouseY) {
         updateDraftUI(); 
     }
 }
+// ================== أفعال اللعب والتوسع ==================
+
+document.getElementById('actionBtn').addEventListener('click', () => {
+    initAudio(); 
+    hideBtns(); 
+    if (myPlayer.gold < 500) return showToast("تحتاج 500 ذهبة لحملة التوسع!");
+    
+    myPlayer.gold -= 500; 
+    gameState = 'DRAFTING'; 
+    draftTiles =[]; 
+    draftSet.clear();
+    maxBudget = Math.max(10, Math.floor(myPlayer.mass * 0.15)); 
+    currentBudget = maxBudget;
+    
+    updateDraftUI(); 
+    document.getElementById('drawPanel').style.display = 'block'; 
+    updateShopUI();
+
+    if (tutStep >= 0 && tutData[tutStep].waitAction === "clickSword") { setTimeout(nextTutStep, 200); }
+});
+
+function updateDraftUI() { 
+    document.getElementById('budgetTxt').innerText = Math.floor(currentBudget); 
+    document.getElementById('drawProgress').max = maxBudget; 
+    document.getElementById('drawProgress').value = maxBudget - currentBudget; 
+}
+
+document.getElementById('btnConfirmDraw').addEventListener('click', () => {
+    let affectedOwners = new Set(); 
+    let destroyedNames =[];
+    draftTiles.forEach(dt => { 
+        if (dt.oldOwner && dt.oldOwner !== myPlayer) { 
+            dt.oldOwner.tiles = dt.oldOwner.tiles.filter(t => t.c !== dt.c || t.r !== dt.r); 
+            affectedOwners.add(dt.oldOwner); 
+            if (dt.oldOwner.tiles.length === 0 && !destroyedNames.includes(dt.oldOwner.name)) destroyedNames.push(dt.oldOwner.name); 
+        } 
+        grid[dt.c][dt.r] = myPlayer; 
+        myPlayer.tiles.push({ c: dt.c, r: dt.r }); 
+    });
+    
+    gameState = 'IDLE'; 
+    document.getElementById('drawPanel').style.display = 'none'; 
+    saveTilesToCloud(myPlayer); 
+    affectedOwners.forEach(owner => saveTilesToCloud(owner)); 
+    saveProgressToCloud(); 
+    showToast("تم التوسع بنجاح! ✔️");
+    
+    if (destroyedNames.length > 0) broadcastNews(`قامت ${myPlayer.name} بتدمير ${destroyedNames.join(' و ')}!`, "⚔️");
+    if (tutStep >= 0 && tutData[tutStep].waitAction === "clickConfirm") nextTutStep();
+});
+
+document.getElementById('btnCancelDraw').addEventListener('click', () => { 
+    myPlayer.gold += 20; 
+    gameState = 'IDLE'; 
+    document.getElementById('drawPanel').style.display = 'none'; 
+});
 // ================== نظام المتجر ==================
 
 function buyWeapon(stat, costArr) { 
